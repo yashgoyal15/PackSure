@@ -1,0 +1,66 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy: push this repo to GitHub, then in Render "New +" -> "Blueprint",
+# point it at the repo. Render reads this file and creates all 3 resources
+# below in one go. After the first deploy, update the two placeholder URLs
+# marked below to match the actual *.onrender.com hostnames Render assigns
+# (or your custom domains) and redeploy.
+#
+# NOTE ON THE DISK: persistent disks are only available on paid instance
+# types, not the free plan. On the free plan, `uploads/` (the actual
+# package-label images) is wiped on every restart/redeploy — inspection
+# records and OCR results in Postgres survive fine, but the "Evidence"
+# photo behind them won't load anymore. Fine for a demo; for real use,
+# either upgrade `plan: starter` below (~$7/mo, keeps the disk) or swap
+# app/services/storage.py for S3/R2 (only that one file needs to change —
+# the rest of the app just calls save_upload() and reads file_path).
+
+databases:
+  - name: packsure-db
+    plan: free
+    databaseName: packsure
+    user: packsure
+
+services:
+  - type: web
+    name: packsure-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: packsure-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      # Update this after the frontend's real URL is known (see note above).
+      # Must be a JSON array — pydantic-settings parses CORS_ORIGINS as a list.
+      - key: CORS_ORIGINS
+        value: '["https://packsure-frontend.onrender.com"]'
+    disk:
+      name: packsure-uploads
+      mountPath: /data/uploads
+      sizeGB: 1
+
+  - type: web
+    name: packsure-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Update this after the backend's real URL is known (see note above).
+      - key: VITE_API_URL
+        value: https://packsure-backend.onrender.com/api
+    routes:
+      # SPA fallback — without this, refreshing on e.g. /app/repository 404s.
+      - type: rewrite
+        source: /*
+        destination: /index.html
