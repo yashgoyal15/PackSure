@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://10.71.135.140:5173",
+        "https://packsure-frontend-egk7.onrender.com",
     ]
 
     # --- File storage ---

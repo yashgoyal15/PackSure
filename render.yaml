@@ -1,18 +1,20 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# Deploy: push this repo to GitHub, then in Render "New +" -> "Blueprint",
-# point it at the repo. Render reads this file and creates all 3 resources
-# below in one go. After the first deploy, update the two placeholder URLs
-# marked below to match the actual *.onrender.com hostnames Render assigns
-# (or your custom domains) and redeploy.
+# Backend + Postgres only — the frontend now deploys separately on Vercel
+# (see frontend/vercel.json), so it's no longer part of this Blueprint.
 #
-# NOTE ON UPLOADED IMAGES: this Blueprint runs the backend on the free
-# plan, which does not support persistent disks at all (Render rejects the
-# whole Blueprint if a free-tier service declares one). So `uploads/` is
-# ephemeral here — inspection records and OCR results in Postgres survive
+# Deploy: push this repo to GitHub, then in Render "New +" -> "Blueprint",
+# point it at the repo. After the first deploy, note the backend's real
+# *.onrender.com URL and:
+#   1. Set it as VITE_API_URL (+ "/api") in the Vercel project's env vars.
+#   2. Come back here and update CORS_ORIGINS below to the Vercel URL.
+#
+# NOTE ON UPLOADED IMAGES: this runs the backend on the free plan, which
+# does not support persistent disks at all (Render rejects the whole
+# Blueprint if a free-tier service declares one). So `uploads/` is
+# ephemeral — inspection records and OCR results in Postgres survive
 # restarts fine, but the "Evidence" photo behind them won't load after a
-# redeploy. Fine for a demo; see the comment next to `packsure-backend`
-# below for how to add real persistence back once you need it.
+# redeploy. Fine for a demo; see the comment below for adding it back.
 
 databases:
   - name: packsure-db
@@ -39,14 +41,15 @@ services:
         value: production
       - key: UPLOAD_DIR
         value: /data/uploads
-      # Update this after the frontend's real URL is known (see note above).
-      # Must be a JSON array — pydantic-settings parses CORS_ORIGINS as a list.
+      # Update to your real Vercel URL once it exists, e.g.
+      # '["https://packsure.vercel.app"]'. Must be a JSON array —
+      # pydantic-settings parses CORS_ORIGINS as a list. If you keep
+      # Vercel's preview-deployment URLs too, list them all here.
       - key: CORS_ORIGINS
-        value: '["https://packsure-frontend.onrender.com"]'
+        value: '["https://packsure.vercel.app"]'
     # NOTE: no `disk:` here — Render rejects the Blueprint outright if a
     # free-tier service declares one (persistent disks require a paid
-    # instance type). That means uploads/ is ephemeral for now: fine for a
-    # demo/first deploy. Once you're ready to keep uploaded photos across
+    # instance type). Once you're ready to keep uploaded photos across
     # restarts, either (a) change `plan: free` above to `plan: starter` and
     # add back:
     #     disk:
@@ -55,19 +58,3 @@ services:
     #       sizeGB: 1
     # or (b) swap app/services/storage.py for S3/R2 instead (works on the
     # free plan too, and only that one file needs to change).
-
-  - type: web
-    name: packsure-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      # Update this after the backend's real URL is known (see note above).
-      - key: VITE_API_URL
-        value: https://packsure-backend.onrender.com/api
-    routes:
-      # SPA fallback — without this, refreshing on e.g. /app/repository 404s.
-      - type: rewrite
-        source: /*
-        destination: /index.html
