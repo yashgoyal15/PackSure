@@ -6,14 +6,13 @@
 # marked below to match the actual *.onrender.com hostnames Render assigns
 # (or your custom domains) and redeploy.
 #
-# NOTE ON THE DISK: persistent disks are only available on paid instance
-# types, not the free plan. On the free plan, `uploads/` (the actual
-# package-label images) is wiped on every restart/redeploy — inspection
-# records and OCR results in Postgres survive fine, but the "Evidence"
-# photo behind them won't load anymore. Fine for a demo; for real use,
-# either upgrade `plan: starter` below (~$7/mo, keeps the disk) or swap
-# app/services/storage.py for S3/R2 (only that one file needs to change —
-# the rest of the app just calls save_upload() and reads file_path).
+# NOTE ON UPLOADED IMAGES: this Blueprint runs the backend on the free
+# plan, which does not support persistent disks at all (Render rejects the
+# whole Blueprint if a free-tier service declares one). So `uploads/` is
+# ephemeral here — inspection records and OCR results in Postgres survive
+# restarts fine, but the "Evidence" photo behind them won't load after a
+# redeploy. Fine for a demo; see the comment next to `packsure-backend`
+# below for how to add real persistence back once you need it.
 
 databases:
   - name: packsure-db
@@ -44,10 +43,18 @@ services:
       # Must be a JSON array — pydantic-settings parses CORS_ORIGINS as a list.
       - key: CORS_ORIGINS
         value: '["https://packsure-frontend.onrender.com"]'
-    disk:
-      name: packsure-uploads
-      mountPath: /data/uploads
-      sizeGB: 1
+    # NOTE: no `disk:` here — Render rejects the Blueprint outright if a
+    # free-tier service declares one (persistent disks require a paid
+    # instance type). That means uploads/ is ephemeral for now: fine for a
+    # demo/first deploy. Once you're ready to keep uploaded photos across
+    # restarts, either (a) change `plan: free` above to `plan: starter` and
+    # add back:
+    #     disk:
+    #       name: packsure-uploads
+    #       mountPath: /data/uploads
+    #       sizeGB: 1
+    # or (b) swap app/services/storage.py for S3/R2 instead (works on the
+    # free plan too, and only that one file needs to change).
 
   - type: web
     name: packsure-frontend
