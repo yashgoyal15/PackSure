@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://10.71.135.140:5173",
-        "pack-sure-are09n7kc-pack-sure.vercel.app",
+        "https://pack-sure-alpha.vercel.app",
     ]
 
     # --- File storage ---
