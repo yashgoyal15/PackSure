@@ -39,9 +39,6 @@ npm run dev
 
 Open `http://localhost:5173`, click **"Launch Console"**, and use one of the quick-fill demo logins on the login screen (Inspector or Administrator).
 
-**To see the AI pipeline actually work:** run `python backend/scripts/gen_test_labels.py` to generate three synthetic test label images, then upload one through "New Inspection" in the app. See `backend/README.md`'s "OCR & Rule Engine Pipeline" section for what each one demonstrates.
-
----
 
 
 
